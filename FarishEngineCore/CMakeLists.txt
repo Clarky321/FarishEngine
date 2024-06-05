@@ -36,3 +36,11 @@ target_include_directories(${ENGINE_PROJECT_NAME}
 
 # Установка стандарта C++ для компиляции
 target_compile_features(${ENGINE_PROJECT_NAME} PUBLIC cxx_std_17)
+
+# ------------------------------------------------------------------------------------- #
+
+add_subdirectory(../external/raylib ${CMAKE_CURRENT_BINARY_DIR}/raylib)
+add_subdirectory(../external/raygui/projects/CMake ${CMAKE_CURRENT_BINARY_DIR}/raygui)
+target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC raylib raygui)
+
+# ------------------------------------------------------------------------------------- #
