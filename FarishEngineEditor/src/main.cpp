@@ -12,9 +12,6 @@ const int tileSize = 32;
 const int gridWidth = 32;
 const int gridHeight = 32;
 
-//typedef enum Orientation { DEFAULT, ROTATE_LEFT, ROTATE_RIGHT } Orientation;
-
-Vector2 GetIsoCoords(int x, int y, int tileSize);
 Vector2 GetTilePosition(Vector2 mousePosition, int tileSize);
 
 int main()
@@ -34,8 +31,6 @@ int main()
 
     SetTargetFPS(60);
 
-    //Orientation orientation = DEFAULT;
-
     while (!WindowShouldClose())
     {
         if (IsKeyDown(KEY_RIGHT)) camera.target.x += 10 / camera.zoom;
@@ -46,31 +41,20 @@ int main()
         camera.zoom += GetMouseWheelMove() * 0.1f;
         if (camera.zoom < 0.1f) camera.zoom = 0.1f;
 
-        // Изменение ориентации
-        //if (IsKeyPressed(KEY_Q)) orientation = (Orientation)((orientation + 2) % 3);
-        //if (IsKeyPressed(KEY_E)) orientation = (Orientation)((orientation + 1) % 3);
-
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
         BeginMode2D(camera);
         map.Draw();
 
-        // Каркас блока, следующего за курсором мыши
-        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-        Vector2 tilePosition = GetTilePosition(mousePosition, tileSize);
-        Vector2 isoPosition = GetIsoCoords((int)tilePosition.x, (int)tilePosition.y, tileSize);
-
-        DrawRectangleLinesEx(Rectangle { isoPosition.x, isoPosition.y, tileSize, tileSize / 2 }, 1, RED);
-
         EndMode2D();
 
         // GUI - Плитки
-        int startX = screenWidth - 120;
-        int startY = 10;
+        float startX = screenWidth - 120;
+        float startY = 10;
         int padding = 5;
 
-        if (GuiButton(Rectangle { (float)startX, (float)startY, 100, 30 }, "Load Tileset"))
+        if (GuiButton(Rectangle { startX, startY, 100, 30 }, "Load Tileset"))
         {
             tileset = LoadTexture("../../assets/iso_tiles.png");
             if (tileset.id != 0)
@@ -111,16 +95,18 @@ int main()
         // Обработка нажатия мыши для установки плитки
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded)
         {
-            int gridX = (tilePosition.x / tileSize + tilePosition.y / (tileSize / 2)) / 2;
-            int gridY = (tilePosition.y / (tileSize / 2) - tilePosition.x / tileSize) / 2;
+            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
+            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
             map.PlaceTile(gridX, gridY, selectedTile);
         }
 
         // Обработка нажатия мыши для удаления плитки
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
-            int gridX = (tilePosition.x / tileSize + tilePosition.y / (tileSize / 2)) / 2;
-            int gridY = (tilePosition.y / (tileSize / 2) - tilePosition.x / tileSize) / 2;
+            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
+            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
             map.RemoveTile(gridX, gridY);
         }
 
@@ -135,14 +121,6 @@ int main()
     CloseWindow();
 
     return 0;
-}
-
-Vector2 GetIsoCoords(int x, int y, int tileSize)
-{
-    Vector2 isoCoords;
-    isoCoords.x = (x - y) * (tileSize / 2);
-    isoCoords.y = (x + y) * (tileSize / 4);
-    return isoCoords;
 }
 
 Vector2 GetTilePosition(Vector2 mousePosition, int tileSize)
