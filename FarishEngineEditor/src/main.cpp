@@ -1,25 +1,154 @@
 #include <raylib.h>
+#include <raymath.h>
+#define RAYGUI_IMPLEMENTATION
+#include <raygui.h>
+
+#include "FarishEngineCore/tile.h"
+#include "FarishEngineCore/isometricMap.h"
+
+const int screenWidth = 800;
+const int screenHeight = 600;
+const int tileSize = 32;
+const int gridWidth = 32;
+const int gridHeight = 32;
+
+//typedef enum Orientation { DEFAULT, ROTATE_LEFT, ROTATE_RIGHT } Orientation;
+
+Vector2 GetIsoCoords(int x, int y, int tileSize);
+Vector2 GetTilePosition(Vector2 mousePosition, int tileSize);
 
 int main()
 {
-	const int screenWidth = 800;
-	const int screenHeight = 600;
+    InitWindow(screenWidth, screenHeight, "Farish Engine");
+    SetWindowState(FLAG_WINDOW_RESIZABLE);
 
-	InitWindow(screenWidth, screenHeight, "Farish Engine");
+    IsometricMap map(gridWidth, gridHeight, tileSize);
 
-	SetWindowState(FLAG_WINDOW_RESIZABLE);
+    Texture2D tileset = { 0 };
+    bool tilesetLoaded = false;
+    int tilesetRows, tilesetCols;
+    Tile selectedTile;
 
-	SetTargetFPS(60);
+    Camera2D camera = { 0 };
+    camera.zoom = 1.0f;
 
-	while (!WindowShouldClose())
-	{
-		BeginDrawing();
-		ClearBackground(SKYBLUE);
+    SetTargetFPS(60);
 
-		EndDrawing();
-	}
+    //Orientation orientation = DEFAULT;
 
-	CloseWindow();
+    while (!WindowShouldClose())
+    {
+        if (IsKeyDown(KEY_RIGHT)) camera.target.x += 10 / camera.zoom;
+        if (IsKeyDown(KEY_LEFT)) camera.target.x -= 10 / camera.zoom;
+        if (IsKeyDown(KEY_UP)) camera.target.y -= 10 / camera.zoom;
+        if (IsKeyDown(KEY_DOWN)) camera.target.y += 10 / camera.zoom;
 
-	return 0;
+        camera.zoom += GetMouseWheelMove() * 0.1f;
+        if (camera.zoom < 0.1f) camera.zoom = 0.1f;
+
+        // Изменение ориентации
+        //if (IsKeyPressed(KEY_Q)) orientation = (Orientation)((orientation + 2) % 3);
+        //if (IsKeyPressed(KEY_E)) orientation = (Orientation)((orientation + 1) % 3);
+
+        BeginDrawing();
+        ClearBackground(RAYWHITE);
+
+        BeginMode2D(camera);
+        map.Draw();
+
+        // Каркас блока, следующего за курсором мыши
+        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+        Vector2 tilePosition = GetTilePosition(mousePosition, tileSize);
+        Vector2 isoPosition = GetIsoCoords((int)tilePosition.x, (int)tilePosition.y, tileSize);
+
+        DrawRectangleLinesEx(Rectangle { isoPosition.x, isoPosition.y, tileSize, tileSize / 2 }, 1, RED);
+
+        EndMode2D();
+
+        // GUI - Плитки
+        int startX = screenWidth - 120;
+        int startY = 10;
+        int padding = 5;
+
+        if (GuiButton(Rectangle { (float)startX, (float)startY, 100, 30 }, "Load Tileset"))
+        {
+            tileset = LoadTexture("../../assets/iso_tiles.png");
+            if (tileset.id != 0)
+            {
+                tilesetLoaded = true;
+                tilesetCols = tileset.width / tileSize;
+                tilesetRows = tileset.height / tileSize;
+            }
+            else
+            {
+                tilesetLoaded = false;
+                TraceLog(LOG_ERROR, "Failed to load tileset texture.");
+            }
+        }
+
+        if (tilesetLoaded)
+        {
+            for (int i = 0; i < tilesetRows; i++)
+            {
+                for (int j = 0; j < tilesetCols; j++)
+                {
+                    Rectangle btnBounds = { startX + j * (tileSize + padding), startY + (i + 1) * (tileSize + padding), tileSize, tileSize };
+                    Vector2 texturePos = { (float)(j * tileSize), (float)(i * tileSize) };
+                    Rectangle sourceRec = { texturePos.x, texturePos.y, (float)tileSize, (float)tileSize };
+
+                    if (GuiButton(btnBounds, ""))
+                    {
+                        selectedTile.texture = tileset;
+                        selectedTile.sourceRec = sourceRec;
+                    }
+
+                    // Отрисовка текстуры на кнопке
+                    DrawTextureRec(tileset, sourceRec, Vector2 { btnBounds.x, btnBounds.y }, WHITE);
+                }
+            }
+        }
+
+        // Обработка нажатия мыши для установки плитки
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded)
+        {
+            int gridX = (tilePosition.x / tileSize + tilePosition.y / (tileSize / 2)) / 2;
+            int gridY = (tilePosition.y / (tileSize / 2) - tilePosition.x / tileSize) / 2;
+            map.PlaceTile(gridX, gridY, selectedTile);
+        }
+
+        // Обработка нажатия мыши для удаления плитки
+        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
+        {
+            int gridX = (tilePosition.x / tileSize + tilePosition.y / (tileSize / 2)) / 2;
+            int gridY = (tilePosition.y / (tileSize / 2) - tilePosition.x / tileSize) / 2;
+            map.RemoveTile(gridX, gridY);
+        }
+
+        EndDrawing();
+    }
+
+    // Очистка ресурсов
+    if (tilesetLoaded)
+    {
+        UnloadTexture(tileset);
+    }
+    CloseWindow();
+
+    return 0;
+}
+
+Vector2 GetIsoCoords(int x, int y, int tileSize)
+{
+    Vector2 isoCoords;
+    isoCoords.x = (x - y) * (tileSize / 2);
+    isoCoords.y = (x + y) * (tileSize / 4);
+    return isoCoords;
+}
+
+Vector2 GetTilePosition(Vector2 mousePosition, int tileSize)
+{
+    Vector2 tilePosition;
+    tilePosition.x = (floor(mousePosition.x / tileSize) * tileSize);
+    tilePosition.y = (floor(mousePosition.y / tileSize) * tileSize / 2);
+    return tilePosition;
 }
