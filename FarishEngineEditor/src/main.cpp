@@ -11,8 +11,10 @@ const int screenHeight = 600;
 const int tileSize = 32;
 const int gridWidth = 32;
 const int gridHeight = 32;
+const int maxHeight = 10; // Максимальная высота
 
-Vector2 GetTilePosition(Vector2 mousePosition, int tileSize);
+Vector3 GetTilePosition(Vector2 mousePosition, int tileSize, int mapWidth, int mapHeight, int currentHeight);
+Vector2 GetIsoCoords(int x, int y, int z, int tileSize);
 
 int main()
 {
@@ -29,6 +31,8 @@ int main()
     Camera2D camera = { 0 };
     camera.zoom = 1.0f;
 
+    int currentHeight = 0; // Текущий уровень для размещения тайлов
+
     SetTargetFPS(60);
 
     while (!WindowShouldClose())
@@ -41,11 +45,25 @@ int main()
         camera.zoom += GetMouseWheelMove() * 0.1f;
         if (camera.zoom < 0.1f) camera.zoom = 0.1f;
 
+        // Изменение уровня по клавишам
+        if (IsKeyPressed(KEY_W) && currentHeight < maxHeight - 1) currentHeight++;
+        if (IsKeyPressed(KEY_S) && currentHeight > 0) currentHeight--;
+
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        ClearBackground(DARKPURPLE);
 
         BeginMode2D(camera);
         map.Draw();
+
+        // Каркас изометрического квадратика, следующего за курсором мыши
+        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+        Vector3 tilePosition = GetTilePosition(mousePosition, tileSize, gridWidth, gridHeight, currentHeight);
+        Vector2 isoPosition = GetIsoCoords(tilePosition.x, tilePosition.y, tilePosition.z, tileSize);
+
+        DrawLine(isoPosition.x, isoPosition.y, isoPosition.x + tileSize / 2, isoPosition.y + tileSize / 4, RED);
+        DrawLine(isoPosition.x + tileSize / 2, isoPosition.y + tileSize / 4, isoPosition.x, isoPosition.y + tileSize / 2, RED);
+        DrawLine(isoPosition.x, isoPosition.y + tileSize / 2, isoPosition.x - tileSize / 2, isoPosition.y + tileSize / 4, RED);
+        DrawLine(isoPosition.x - tileSize / 2, isoPosition.y + tileSize / 4, isoPosition.x, isoPosition.y, RED);
 
         EndMode2D();
 
@@ -54,9 +72,9 @@ int main()
         float startY = 10;
         int padding = 5;
 
-        if (GuiButton(Rectangle { startX, startY, 100, 30 }, "Load Tileset"))
+        if (GuiButton(Rectangle{ startX, startY, 100, 30 }, "Load Tileset"))
         {
-            tileset = LoadTexture("../../assets/iso_tiles.png");
+            tileset = LoadTexture("../../assets/isometric.png");
             if (tileset.id != 0)
             {
                 tilesetLoaded = true;
@@ -87,7 +105,7 @@ int main()
                     }
 
                     // Отрисовка текстуры на кнопке
-                    DrawTextureRec(tileset, sourceRec, Vector2 { btnBounds.x, btnBounds.y }, WHITE);
+                    DrawTextureRec(tileset, sourceRec, Vector2{ btnBounds.x, btnBounds.y }, WHITE);
                 }
             }
         }
@@ -95,19 +113,25 @@ int main()
         // Обработка нажатия мыши для установки плитки
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded)
         {
-            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
-            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
-            map.PlaceTile(gridX, gridY, selectedTile);
+            int gridX = static_cast<int>(tilePosition.x);
+            int gridY = static_cast<int>(tilePosition.y);
+            int gridZ = static_cast<int>(tilePosition.z);
+            if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight && gridZ >= 0 && gridZ < maxHeight)
+            {
+                map.PlaceTile(gridX, gridY, gridZ, selectedTile);
+            }
         }
 
         // Обработка нажатия мыши для удаления плитки
         if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
         {
-            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
-            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
-            map.RemoveTile(gridX, gridY);
+            int gridX = static_cast<int>(tilePosition.x);
+            int gridY = static_cast<int>(tilePosition.y);
+            int gridZ = static_cast<int>(tilePosition.z);
+            if (gridX >= 0 && gridX < gridWidth && gridY >= 0 && gridY < gridHeight && gridZ >= 0 && gridZ < maxHeight)
+            {
+                map.RemoveTile(gridX, gridY, gridZ);
+            }
         }
 
         EndDrawing();
@@ -123,10 +147,30 @@ int main()
     return 0;
 }
 
-Vector2 GetTilePosition(Vector2 mousePosition, int tileSize)
+Vector3 GetTilePosition(Vector2 mousePosition, int tileSize, int mapWidth, int mapHeight, int currentHeight)
 {
-    Vector2 tilePosition;
-    tilePosition.x = (floor(mousePosition.x / tileSize) * tileSize);
-    tilePosition.y = (floor(mousePosition.y / tileSize) * tileSize / 2);
+    Vector3 tilePosition;
+
+    // Конвертируем экранные координаты в координаты изометрической сетки
+    float mapX = mousePosition.x / (tileSize / 2);
+    float mapY = mousePosition.y / (tileSize / 4);
+
+    tilePosition.x = (mapY + mapX) / 2;
+    tilePosition.y = (mapY - mapX) / 2;
+    tilePosition.z = currentHeight; // Используем текущий уровень для плитки
+
+    // Привязка к сетке
+    tilePosition.x = floor(tilePosition.x);
+    tilePosition.y = floor(tilePosition.y);
+
     return tilePosition;
+}
+
+Vector2 GetIsoCoords(int x, int y, int z, int tileSize)
+{
+    Vector2 isoCoords;
+    isoCoords.x = (x - y) * (tileSize / 2);
+    isoCoords.y = (x + y) * (tileSize / 4) - z * (tileSize / 2);
+
+    return isoCoords;
 }
