@@ -1,7 +1,8 @@
 #include <raylib.h>
 #include <raymath.h>
-#define RAYGUI_IMPLEMENTATION
-#include <raygui.h>
+#include <imgui.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
+#include <imgui/backends/imgui_impl_raylib.h>
 
 #include "FarishEngineCore/tile.h"
 #include "FarishEngineCore/isometricMap.h"
@@ -26,7 +27,7 @@ int main()
     Texture2D tileset = { 0 };
     bool tilesetLoaded = false;
     int tilesetRows, tilesetCols;
-    Tile selectedTile;
+    Tile selectedTile; // Инициализация структуры Tile по умолчанию
 
     Camera2D camera = { 0 };
     camera.zoom = 1.0f;
@@ -35,8 +36,21 @@ int main()
 
     SetTargetFPS(60);
 
+    // Инициализация ImGui
+    ImGui::CreateContext();
+    ImGui::StyleColorsDark();
+    ImGui_ImplOpenGL3_Init();
+    ImGui_ImplRaylib_Init();
+
+    int selectedTileIndex = -1;
+
     while (!WindowShouldClose())
     {
+        // Обработка ввода ImGui
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplRaylib_NewFrame();
+        ImGui::NewFrame();
+
         if (IsKeyDown(KEY_RIGHT)) camera.target.x += 10 / camera.zoom;
         if (IsKeyDown(KEY_LEFT)) camera.target.x -= 10 / camera.zoom;
         if (IsKeyDown(KEY_UP)) camera.target.y -= 10 / camera.zoom;
@@ -44,10 +58,6 @@ int main()
 
         camera.zoom += GetMouseWheelMove() * 0.1f;
         if (camera.zoom < 0.1f) camera.zoom = 0.1f;
-
-        // Изменение уровня по клавишам
-        if (IsKeyPressed(KEY_W) && currentHeight < maxHeight - 1) currentHeight++;
-        if (IsKeyPressed(KEY_S) && currentHeight > 0) currentHeight--;
 
         BeginDrawing();
         ClearBackground(DARKPURPLE);
@@ -67,12 +77,9 @@ int main()
 
         EndMode2D();
 
-        // GUI - Плитки
-        float startX = screenWidth - 120;
-        float startY = 10;
-        int padding = 5;
-
-        if (GuiButton(Rectangle{ startX, startY, 100, 30 }, "Load Tileset"))
+        // Меню ImGui
+        ImGui::Begin("Tileset Menu");
+        if (ImGui::Button("Load Tileset"))
         {
             tileset = LoadTexture("../../assets/isometric.png");
             if (tileset.id != 0)
@@ -90,28 +97,34 @@ int main()
 
         if (tilesetLoaded)
         {
+            ImGui::Text("Select a tile:");
             for (int i = 0; i < tilesetRows; i++)
             {
                 for (int j = 0; j < tilesetCols; j++)
                 {
-                    Rectangle btnBounds = { startX + j * (tileSize + padding), startY + (i + 1) * (tileSize + padding), tileSize, tileSize };
-                    Vector2 texturePos = { (float)(j * tileSize), (float)(i * tileSize) };
-                    Rectangle sourceRec = { texturePos.x, texturePos.y, (float)tileSize, (float)tileSize };
-
-                    if (GuiButton(btnBounds, ""))
+                    ImVec2 uv0 = ImVec2((float)j * tileSize / tileset.width, (float)i * tileSize / tileset.height);
+                    ImVec2 uv1 = ImVec2((float)(j + 1) * tileSize / tileset.width, (float)(i + 1) * tileSize / tileset.height);
+                    ImGui::PushID(i * tilesetCols + j); // Добавлено для уникальности ID кнопок
+                    if (ImGui::ImageButton((void*)(intptr_t)tileset.id, ImVec2((float)tileSize, (float)tileSize), uv0, uv1))
                     {
                         selectedTile.texture = tileset;
-                        selectedTile.sourceRec = sourceRec;
+                        selectedTile.sourceRec = { (float)(j * tileSize), (float)(i * tileSize), (float)tileSize, (float)tileSize };
+                        selectedTileIndex = i * tilesetCols + j;
                     }
-
-                    // Отрисовка текстуры на кнопке
-                    DrawTextureRec(tileset, sourceRec, Vector2{ btnBounds.x, btnBounds.y }, WHITE);
+                    if (selectedTileIndex == i * tilesetCols + j)
+                    {
+                        ImGui::GetWindowDrawList()->AddRect(ImGui::GetItemRectMin(), ImGui::GetItemRectMax(), IM_COL32(255, 255, 0, 255));
+                    }
+                    ImGui::PopID(); // Закрытие уникального ID
+                    ImGui::SameLine();
                 }
+                ImGui::NewLine();
             }
         }
+        ImGui::End();
 
         // Обработка нажатия мыши для установки плитки
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded)
+        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded && selectedTileIndex != -1)
         {
             int gridX = static_cast<int>(tilePosition.x);
             int gridY = static_cast<int>(tilePosition.y);
@@ -134,14 +147,28 @@ int main()
             }
         }
 
+        // Обработка клавиш для изменения уровня
+        if (IsKeyPressed(KEY_W) && currentHeight < maxHeight - 1) currentHeight++;
+        if (IsKeyPressed(KEY_S) && currentHeight > 0) currentHeight--;
+
+        // Завершение ImGui рендеринга
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         EndDrawing();
     }
+
+    // Очистка ресурсов ImGui
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplRaylib_Shutdown();
+    ImGui::DestroyContext();
 
     // Очистка ресурсов
     if (tilesetLoaded)
     {
         UnloadTexture(tileset);
     }
+
     CloseWindow();
 
     return 0;

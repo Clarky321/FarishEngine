@@ -60,10 +60,18 @@ set(IMGUI_INCLUDES
 	../external/imgui/imstb_textedit.h
 	../external/imgui/imstb_truetype.h
 	
+	../external/imgui/backends/imgui_impl_opengl3.h
+	
+	../external/imgui/backends/imgui_impl_raylib.h
+	
 )
 
 set(IMGUI_SOURCES
 	../external/imgui/imgui.cpp
+	
+	../external/imgui/backends/imgui_impl_opengl3.cpp
+	
+	../external/imgui/backends/imgui_impl_raylib.cpp
 	
 	../external/imgui/imgui_draw.cpp
 	../external/imgui/imgui_widgets.cpp
@@ -82,26 +90,28 @@ target_include_directories(ImGui PUBLIC ../external/imgui)
 
 # ------------------------------------------------------------------------------------- #
 
-set(RLLMGUI_INCLUDES
-	../external/rllmgui/imgui_impl_raylib.h
-	../external/rllmgui/rlImGui.h
-	../external/rllmgui/rlImGuiColors.h
-	
-	../external/rllmgui/extras/FA6FreeSolidFontData.h
-	../external/rllmgui/extras/IconsFontAwesome6.h
+#set(RLLMGUI_INCLUDES
+#	../external/rllmgui/imgui_impl_raylib.h
+#	../external/rllmgui/rlImGui.h
+#	../external/rllmgui/rlImGuiColors.h
+#	
+#	../external/rllmgui/extras/FA6FreeSolidFontData.h
+#	../external/rllmgui/extras/IconsFontAwesome6.h
+#)
+#
+#set(RLLMGUI_SOURCES
+#	../external/rllmgui/rlImGui.cpp
+#)
+#
+#add_library(rlImGui STATIC
+#	${RLLMGUI_INCLUDES}
+#	${RLLMGUI_SOURCES}
+#)
+#
+#target_include_directories(rlImGui PUBLIC ../external/rllmgui)
+
+target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC ImGui
+#rlImGui
 )
-
-set(RLLMGUI_SOURCES
-	../external/rllmgui/rlImGui.cpp
-)
-
-add_library(rlImGui STATIC
-	${RLLMGUI_INCLUDES}
-	${RLLMGUI_SOURCES}
-)
-
-target_include_directories(rlImGui PUBLIC ../external/rllmgui)
-
-target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC ImGui rlImGui)
 
 # ------------------------------------------------------------------------------------- #

@@ -11,6 +11,9 @@ struct Tile
 
     Tile() : texture{ 0 }, sourceRec{ 0, 0, 0, 0 }, position{ 0, 0, 0 } {}
 
+    Tile(const Tile& other)
+        : texture(other.texture), sourceRec(other.sourceRec), position(other.position) {}
+
     Tile& operator=(const Tile& other)
     {
         if (this != &other)
