@@ -1,4 +1,4 @@
-#include "FarishEngineCore/isometricMap.h"
+#include "FarishEngineCore/IsometricMap.h"
 
 IsometricMap::IsometricMap(int width, int height, int tileSize)
     : width(width), height(height), tileSize(tileSize)

@@ -1,5 +1,5 @@
-#include <imgui.h>
-#include <../raylib/src/raylib.h>
+#include <../../imgui/imgui.h>
+#include <../../raylib/src/raylib.h>
 
 #include "imgui_impl_raylib.h"
 

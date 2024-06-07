@@ -3,7 +3,8 @@
 
 #include <raylib.h>
 #include <raymath.h>
-#include "FarishEngineCore/tile.h"
+
+#include "FarishEngineCore/Tile.h"
 
 class IsometricMap
 {
