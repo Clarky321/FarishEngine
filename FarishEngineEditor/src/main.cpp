@@ -38,7 +38,12 @@ int main()
 
     // Инициализация ImGui
     ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
+
     ImGui::StyleColorsDark();
+
     ImGui_ImplOpenGL3_Init();
     ImGui_ImplRaylib_Init();
 
@@ -51,6 +56,24 @@ int main()
         ImGui_ImplRaylib_NewFrame();
         ImGui::NewFrame();
 
+        // Dockspace
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos(viewport->Pos);
+        ImGui::SetNextWindowSize(viewport->Size);
+        ImGui::SetNextWindowViewport(viewport->ID);
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+
+        ImGui::Begin("DockSpace Window", nullptr, windowFlags);
+        ImGui::PopStyleVar(3);
+
+        ImGuiID dockspaceID = ImGui::GetID("DockSpace");
+        ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+        ImGui::End();
+
         if (IsKeyDown(KEY_RIGHT)) camera.target.x += 10 / camera.zoom;
         if (IsKeyDown(KEY_LEFT)) camera.target.x -= 10 / camera.zoom;
         if (IsKeyDown(KEY_UP)) camera.target.y -= 10 / camera.zoom;
@@ -60,7 +83,7 @@ int main()
         if (camera.zoom < 0.1f) camera.zoom = 0.1f;
 
         BeginDrawing();
-        ClearBackground(DARKPURPLE);
+        ClearBackground(RAYWHITE); // Установка белого фона
 
         BeginMode2D(camera);
         map.Draw();
@@ -151,7 +174,6 @@ int main()
         if (IsKeyPressed(KEY_W) && currentHeight < maxHeight - 1) currentHeight++;
         if (IsKeyPressed(KEY_S) && currentHeight > 0) currentHeight--;
 
-        // Завершение ImGui рендеринга
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
