@@ -1,5 +1,6 @@
 #include "FarishEngineCore/IsometricMap.h"
 
+
 IsometricMap::IsometricMap(int width, int height, int tileSize)
     : width(width), height(height), tileSize(tileSize)
 {
@@ -68,4 +69,38 @@ Vector2 IsometricMap::GetIsoCoords(int x, int y, int z)
     isoCoords.y = (x + y) * (tileSize / 4) - z * (tileSize / 2);
 
     return isoCoords;
+}
+
+int IsometricMap::GetWidth() const { return width; }
+
+int IsometricMap::GetHeight() const { return height; }
+
+Tile*** IsometricMap::GetTileMap() const { return tileMap; }
+
+void IsometricMap::SaveToStream(std::ostream& stream) const
+{
+    for (int z = 0; z < 10; ++z)
+    {
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                stream.write(reinterpret_cast<const char*>(&tileMap[x][y][z]), sizeof(Tile));
+            }
+        }
+    }
+}
+
+void IsometricMap::LoadFromStream(std::istream& stream)
+{
+    for (int z = 0; z < 10; ++z)
+    {
+        for (int y = 0; y < height; ++y)
+        {
+            for (int x = 0; x < width; ++x)
+            {
+                stream.read(reinterpret_cast<char*>(&tileMap[x][y][z]), sizeof(Tile));
+            }
+        }
+    }
 }

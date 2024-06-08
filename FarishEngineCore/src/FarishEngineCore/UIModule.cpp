@@ -1,24 +1,24 @@
 #include "FarishEngineCore\UIModule.h"
 
-void SetupDockSpace()
-{
-    ImGuiViewport* viewport = ImGui::GetMainViewport();
-    ImGui::SetNextWindowPos(viewport->Pos);
-    ImGui::SetNextWindowSize(viewport->Size);
-    ImGui::SetNextWindowViewport(viewport->ID);
-    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-
-    ImGui::Begin("DockSpace Window", nullptr, windowFlags);
-    ImGui::PopStyleVar(3);
-
-    ImGuiID dockspaceID = ImGui::GetID("DockSpace");
-    ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
-    ImGui::End();
-}
+//void SetupDockSpace()
+//{
+//    ImGuiViewport* viewport = ImGui::GetMainViewport();
+//    ImGui::SetNextWindowPos(viewport->Pos);
+//    ImGui::SetNextWindowSize(viewport->Size);
+//    ImGui::SetNextWindowViewport(viewport->ID);
+//    ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+//
+//    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+//    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+//    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+//
+//    ImGui::Begin("DockSpace Window", nullptr, windowFlags);
+//    ImGui::PopStyleVar(3);
+//
+//    ImGuiID dockspaceID = ImGui::GetID("DockSpace");
+//    ImGui::DockSpace(dockspaceID, ImVec2(0.0f, 0.0f), ImGuiDockNodeFlags_PassthruCentralNode);
+//    ImGui::End();
+//}
 
 void DrawTilesetMenu(Texture2D& tileset, bool& tilesetLoaded, int& tilesetRows, int& tilesetCols, Tile& selectedTile, int& selectedTileIndex, int tileSize)
 {

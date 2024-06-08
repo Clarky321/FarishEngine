@@ -106,3 +106,8 @@ add_subdirectory(../external/imgui_raylib ${CMAKE_CURRENT_BINARY_DIR}/imgui_rayl
 target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC imgui_raylib)
 
 # ------------------------------------------------------------------------------------- #
+
+add_subdirectory(../external/tinyfiledialogs ${CMAKE_CURRENT_BINARY_DIR}/tinyfiledialogs)
+target_link_libraries(${ENGINE_PROJECT_NAME} PUBLIC tinyfiledialogs)
+
+# ------------------------------------------------------------------------------------- #
