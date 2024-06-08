@@ -37,6 +37,7 @@ int main()
     Tile selectedTile;
 
     Camera2D camera = InitCamera();
+    int rotationState = 0;  // Инициализируем состояние поворота
 
     int currentHeight = 0;
 
@@ -45,8 +46,6 @@ int main()
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     ImGui::StyleColorsDark();
 
@@ -61,7 +60,7 @@ int main()
         ImGui_ImplOpenGL3_NewFrame();
         ImGui::NewFrame();
 
-        UpdateCamera(camera);
+        UpdateCamera(camera, rotationState);
 
         // Меню сверху для загрузки и сохранения карты
         if (ImGui::BeginMainMenuBar())
