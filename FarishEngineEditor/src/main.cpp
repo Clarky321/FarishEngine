@@ -1,18 +1,28 @@
 #include <raylib.h>
 #include <raymath.h>
-#define RAYGUI_IMPLEMENTATION
-#include <raygui.h>
+#include <imgui.h>
 
-#include "FarishEngineCore/tile.h"
-#include "FarishEngineCore/isometricMap.h"
+#include <imgui_raylib/include/imgui_impl_raylib.h>
+#include <imgui/backends/imgui_impl_opengl3.h>
+#include <tinyfiledialogs.h>
+
+#include "FarishEngineCore/Tile.h"
+#include "FarishEngineCore/IsometricMap.h"
+#include "FarishEngineCore/Camera.h"
+#include "FarishEngineCore/UIModule.h"
+#include "FarishEngineCore/Input.h"
+#include "FarishEngineCore/Utils.h"
 
 const int screenWidth = 800;
 const int screenHeight = 600;
 const int tileSize = 32;
 const int gridWidth = 32;
 const int gridHeight = 32;
+const int maxHeight = 10; // Максимальная высота
 
-Vector2 GetTilePosition(Vector2 mousePosition, int tileSize);
+void DrawInfiniteGrid(Camera2D camera, int tileSize);
+void LoadMap(IsometricMap& map, const char* filename);
+void SaveMap(IsometricMap& map, const char* filename);
 
 int main()
 {
@@ -26,107 +36,138 @@ int main()
     int tilesetRows, tilesetCols;
     Tile selectedTile;
 
-    Camera2D camera = { 0 };
-    camera.zoom = 1.0f;
+    Camera2D camera = InitCamera();
+
+    int currentHeight = 0;
 
     SetTargetFPS(60);
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+    ImGui::StyleColorsDark();
+
+    ImGui_ImplRaylib_Init();
+    ImGui_ImplOpenGL3_Init();
+
+    int selectedTileIndex = -1;
+
     while (!WindowShouldClose())
     {
-        if (IsKeyDown(KEY_RIGHT)) camera.target.x += 10 / camera.zoom;
-        if (IsKeyDown(KEY_LEFT)) camera.target.x -= 10 / camera.zoom;
-        if (IsKeyDown(KEY_UP)) camera.target.y -= 10 / camera.zoom;
-        if (IsKeyDown(KEY_DOWN)) camera.target.y += 10 / camera.zoom;
+        ImGui_ImplRaylib_NewFrame();
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui::NewFrame();
 
-        camera.zoom += GetMouseWheelMove() * 0.1f;
-        if (camera.zoom < 0.1f) camera.zoom = 0.1f;
+        UpdateCamera(camera);
+
+        // Меню сверху для загрузки и сохранения карты
+        if (ImGui::BeginMainMenuBar())
+        {
+            if (ImGui::BeginMenu("File"))
+            {
+                if (ImGui::MenuItem("Load Map"))
+                {
+                    const char* lFilterPatterns[2] = { "*.dat", "*.bin" };
+                    const char* filename = tinyfd_openFileDialog("Load Map", "", 2, lFilterPatterns, NULL, 0);
+                    if (filename)
+                    {
+                        LoadMap(map, filename);
+                    }
+                }
+                if (ImGui::MenuItem("Save Map"))
+                {
+                    const char* filename = tinyfd_saveFileDialog("Save Map", "", 0, NULL, NULL);
+                    if (filename)
+                    {
+                        SaveMap(map, filename);
+                    }
+                }
+                ImGui::EndMenu();
+            }
+            ImGui::EndMainMenuBar();
+        }
+
+        // Меню слева для отображения текущего уровня
+        ImGui::Begin("Height Level");
+        ImGui::Text("Current Height: %d", currentHeight + 1);
+        ImGui::End();
 
         BeginDrawing();
+
         ClearBackground(RAYWHITE);
 
         BeginMode2D(camera);
+        DrawInfiniteGrid(camera, tileSize);
         map.Draw();
+
+        Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
+        Vector3 tilePosition = GetTilePosition(mousePosition, tileSize, gridWidth, gridHeight, currentHeight);
+        Vector2 isoPosition = GetIsoCoords(tilePosition.x, tilePosition.y, tilePosition.z, tileSize);
+
+        DrawIsoTileOutline(isoPosition, tileSize);
 
         EndMode2D();
 
-        // GUI - Плитки
-        float startX = screenWidth - 120;
-        float startY = 10;
-        int padding = 5;
+        DrawTilesetMenu(tileset, tilesetLoaded, tilesetRows, tilesetCols, selectedTile, selectedTileIndex, tileSize);
 
-        if (GuiButton(Rectangle { startX, startY, 100, 30 }, "Load Tileset"))
-        {
-            tileset = LoadTexture("../../assets/iso_tiles.png");
-            if (tileset.id != 0)
-            {
-                tilesetLoaded = true;
-                tilesetCols = tileset.width / tileSize;
-                tilesetRows = tileset.height / tileSize;
-            }
-            else
-            {
-                tilesetLoaded = false;
-                TraceLog(LOG_ERROR, "Failed to load tileset texture.");
-            }
-        }
+        HandleTilePlacement(map, tilesetLoaded, selectedTileIndex, selectedTile, tilePosition, gridWidth, gridHeight, maxHeight, currentHeight);
+        HandleHeightChange(currentHeight, maxHeight);
 
-        if (tilesetLoaded)
-        {
-            for (int i = 0; i < tilesetRows; i++)
-            {
-                for (int j = 0; j < tilesetCols; j++)
-                {
-                    Rectangle btnBounds = { startX + j * (tileSize + padding), startY + (i + 1) * (tileSize + padding), tileSize, tileSize };
-                    Vector2 texturePos = { (float)(j * tileSize), (float)(i * tileSize) };
-                    Rectangle sourceRec = { texturePos.x, texturePos.y, (float)tileSize, (float)tileSize };
-
-                    if (GuiButton(btnBounds, ""))
-                    {
-                        selectedTile.texture = tileset;
-                        selectedTile.sourceRec = sourceRec;
-                    }
-
-                    // Отрисовка текстуры на кнопке
-                    DrawTextureRec(tileset, sourceRec, Vector2 { btnBounds.x, btnBounds.y }, WHITE);
-                }
-            }
-        }
-
-        // Обработка нажатия мыши для установки плитки
-        if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT) && tilesetLoaded)
-        {
-            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
-            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
-            map.PlaceTile(gridX, gridY, selectedTile);
-        }
-
-        // Обработка нажатия мыши для удаления плитки
-        if (IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))
-        {
-            Vector2 mousePosition = GetScreenToWorld2D(GetMousePosition(), camera);
-            int gridX = (mousePosition.x / (tileSize / 2) + mousePosition.y / (tileSize / 4)) / 2;
-            int gridY = (mousePosition.y / (tileSize / 4) - mousePosition.x / (tileSize / 2)) / 2;
-            map.RemoveTile(gridX, gridY);
-        }
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         EndDrawing();
     }
 
-    // Очистка ресурсов
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplRaylib_Shutdown();
+    ImGui::DestroyContext();
+
     if (tilesetLoaded)
     {
         UnloadTexture(tileset);
     }
+
     CloseWindow();
 
     return 0;
 }
 
-Vector2 GetTilePosition(Vector2 mousePosition, int tileSize)
+void DrawInfiniteGrid(Camera2D camera, int tileSize)
 {
-    Vector2 tilePosition;
-    tilePosition.x = (floor(mousePosition.x / tileSize) * tileSize);
-    tilePosition.y = (floor(mousePosition.y / tileSize) * tileSize / 2);
-    return tilePosition;
+    Vector2 cameraPos = GetScreenToWorld2D(Vector2{ 0, 0 }, camera);
+    Vector2 cameraEndPos = GetScreenToWorld2D(Vector2{ (float)GetScreenWidth(), (float)GetScreenHeight() }, camera);
+
+    for (float x = cameraPos.x; x < cameraEndPos.x; x += tileSize)
+    {
+        for (float y = cameraPos.y; y < cameraEndPos.y; y += tileSize)
+        {
+            Vector2 isoPos = GetIsoCoords((int)x / tileSize, (int)y / tileSize, 0, tileSize);
+            DrawLine(isoPos.x, isoPos.y, isoPos.x + tileSize, isoPos.y + tileSize / 2, LIGHTGRAY);
+            DrawLine(isoPos.x, isoPos.y, isoPos.x - tileSize, isoPos.y + tileSize / 2, LIGHTGRAY);
+        }
+    }
+}
+
+void LoadMap(IsometricMap& map, const char* filename)
+{
+    std::ifstream file(filename, std::ios::binary);
+    if (file.is_open())
+    {
+        map.LoadFromStream(file);
+        file.close();
+    }
+}
+
+void SaveMap(IsometricMap& map, const char* filename)
+{
+    std::ofstream file(filename, std::ios::binary);
+    if (file.is_open())
+    {
+        map.SaveToStream(file);
+        file.close();
+    }
 }
